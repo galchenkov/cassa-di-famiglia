@@ -112,7 +112,7 @@ app.get('/menu/:category/:product', (req, res) => {
     )
 })
 
-const listen = (app, port) => app.listen(port, () => {
+const listen = (app, port) => app.listen(port, '0.0.0.0', () => {
     console.log(`Listening at http://localhost:${port}`)
 })
 
