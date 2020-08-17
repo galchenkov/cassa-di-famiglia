@@ -19,6 +19,7 @@ app.get('/', (req, res) => {
                 text('Целевая аудитория, в рамках сегодняшних воззрений, исключительно искажает коллективный имидж. Ребрендинг отталкивает комплексный целевой трафик, учитывая результат предыдущих медиа-кампаний. Еще Траут показал, что воздействие на потребителя стабилизирует мониторинг активности, размещаясь во всех медиа. А вот по мнению аналитиков медиаплан развивает рекламный бриф. Product placement абстрактен. Поисковая реклама актаульна как никогда.'),
                 button('Меню ресторана', navigate('/menu')),
                 button('Контакты', navigate('/contacts')),
+                button('Данные из Чатиума', navigate('/chatium')),
             ]),
         ),
     )
@@ -32,6 +33,26 @@ app.get('/contacts', (req, res) => {
                 image('https://fs.chatium.io/fileservice/file/download/h/image_VkmpttT2ls.800x800.png'),
                 button('ул. Металлургов, 7/18', copyToClipboard('ул. Металлургов, 7/18'), {buttonType: 'flat'}),
                 button('+7 495 306-24-57', copyToClipboard('+7 495 306-24-57'), {buttonType: 'flat'}),
+                button('Главная страница', navigate('/')),
+            ]),
+        ),
+    )
+})
+
+app.get('/chatium', (req, res) => {
+    const accountId = req.header('x-chatium-account-id') ? req.header('x-chatium-account-id') : '–'
+    const authId = req.header('x-chatium-auth-id') ? req.header('x-chatium-auth-id') : '–'
+    const userId = req.header('x-chatium-user-id') ? req.header('x-chatium-user-id') : '–'
+
+    res.json(
+        response(
+            screen('Данные из чатиума', [
+                text('Account'),
+                button(accountId, copyToClipboard(accountId), {buttonType: 'flat'}),
+                text('Auth'),
+                button(authId, copyToClipboard(authId), {buttonType: 'flat'}),
+                text('User'),
+                button(userId, copyToClipboard(userId), {buttonType: 'flat'}),
                 button('Главная страница', navigate('/')),
             ]),
         ),
