@@ -136,7 +136,7 @@ app.get('/menu/:category/:product', (req, res) => {
     res.json(
         response(
             screen(product.name, [
-                image(fs(product.image), '900x900'),
+                image(fs(product.image, '900x900')),
                 text(product.name, {
                     fontSize: 'xxlarge',
                     isBold: true,
@@ -186,7 +186,7 @@ app.get('/order', (req, res) => {
                         return listItem(
                             orders[authId][id] + ' x ' + product.name,
                             product.description,
-                            imageIcon(fs(product.image), '200x200'),
+                            imageIcon(fs(product.image, '200x200')),
                             {
                                 onClick: navigate(`/menu/${category.id}/${product.id}`),
                                 status: {
