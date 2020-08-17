@@ -3,7 +3,7 @@ const cors = require('cors')
 const bodyParser = require('body-parser')
 
 const { response, appAction, screen, text, button, image, listItem, imageIcon } = require('./chatium/json')
-const { navigate, apiCall, copyToClipboard, refresh } = require('./chatium/actions')
+const { navigate, apiCall, showToast, copyToClipboard, refresh } = require('./chatium/actions')
 
 const categories = require('./data/categories')
 const products = require('./data/products')
@@ -27,6 +27,7 @@ app.get('/', (req, res) => {
                 image('https://fs.chatium.io/fileservice/file/download/h/image_QKwNFH2SsM.1000x715.png'),
                 text('Целевая аудитория, в рамках сегодняшних воззрений, исключительно искажает коллективный имидж. Ребрендинг отталкивает комплексный целевой трафик, учитывая результат предыдущих медиа-кампаний. Еще Траут показал, что воздействие на потребителя стабилизирует мониторинг активности, размещаясь во всех медиа. А вот по мнению аналитиков медиаплан развивает рекламный бриф. Product placement абстрактен. Поисковая реклама актаульна как никогда.'),
                 button('Меню ресторана', navigate('/menu')),
+                button('Мой заказ', navigate(`/order`)),
                 button('Контакты', navigate('/contacts')),
                 button('Данные из Чатиума', navigate('/chatium')),
             ]),
@@ -130,6 +131,7 @@ app.get('/menu/:category/:product', (req, res) => {
             ? orders[authId][product.id]
             : 0
         : 0
+    const order = orders[authId] && Object.keys(orders[authId]).length > 0
 
     res.json(
         response(
@@ -155,7 +157,66 @@ app.get('/menu/:category/:product', (req, res) => {
                 count > 0 && button('Убать из заказа', apiCall(`/order/remove`, {
                     product: product.id,
                 })),
+                order && button('Мой заказ', navigate(`/order`)),
                 button(category.name, navigate(`/menu/${category.id}`))
+            ])
+        )
+    )
+})
+
+app.get('/order', (req, res) => {
+    const authId = req.header('x-chatium-auth-id') || null
+
+    if (orders[authId] && Object.keys(orders[authId]).length > 0) {
+        const productIds = Object.keys(orders[authId])
+
+        const total = productIds.reduce((result, id) => {
+            const product = products.find(product => product.id === id)
+
+            return result + product.price * orders[authId][id]
+        }, 0)
+
+        res.json(
+            response(
+                screen('Заказ', [
+                    ...productIds.map(id => {
+                        const product = products.find(product => product.id === id)
+                        const category = categories.find(category => category.id === product.category)
+
+                        return listItem(
+                            orders[authId][id] + ' x ' + product.name,
+                            product.description,
+                            imageIcon(product.image),
+                            {
+                                onClick: navigate(`/menu/${category.id}/${product.id}`),
+                                status: {
+                                    text: product.price + '₽',
+                                    bgColor: 'blue',
+                                    color: 'white',
+                                    isAvailable: true,
+                                },
+                            }
+                        )
+                    }),
+                    text(`Итого: ${total} руб.`, {
+                        fontSize: 'xxxlarge',
+                    }),
+                    button('Оплатить заказ', showToast('Я пока не умею =('))
+                ])
+            )
+        )
+    }
+
+    res.json(
+        response(
+            screen('Заказ', [
+                text('Ваш заказ пустой =(', {
+                    containerStyle: {
+                        marginTop: 50,
+                        marginBottom: 50,
+                    },
+                }),
+                button('Меню', navigate(`/menu`)),
             ])
         )
     )
@@ -186,6 +247,10 @@ app.post('/order/remove', (req, res) => {
 
     if (orders[authId] && orders[authId][req.body.product]) {
         orders[authId][req.body.product]--
+
+        if (orders[authId][req.body.product] === 0) {
+            delete orders[authId][req.body.product]
+        }
     }
 
     res.json(
