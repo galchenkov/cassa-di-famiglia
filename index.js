@@ -102,7 +102,7 @@ app.get('/menu/:category', (req, res) => {
                         listItem(
                             product.name,
                             product.description,
-                            imageIcon(product.image),
+                            imageIcon(fs(product.image, '200x200')),
                             {
                                 onClick: navigate(`/menu/${category.id}/${product.id}`),
                                 status: {
@@ -136,7 +136,7 @@ app.get('/menu/:category/:product', (req, res) => {
     res.json(
         response(
             screen(product.name, [
-                image(product.image),
+                image(fs(product.image), '900x900'),
                 text(product.name, {
                     fontSize: 'xxlarge',
                     isBold: true,
@@ -186,7 +186,7 @@ app.get('/order', (req, res) => {
                         return listItem(
                             orders[authId][id] + ' x ' + product.name,
                             product.description,
-                            imageIcon(product.image),
+                            imageIcon(fs(product.image), '200x200'),
                             {
                                 onClick: navigate(`/menu/${category.id}/${product.id}`),
                                 status: {
@@ -277,3 +277,5 @@ if (process.env.NODE_ENV === 'development') {
 }
 //30123
 listen(app, process.env.PORT || 5050)
+
+const fs = (hash, size = '100x100') => `https://fs.chatium.io/fileservice/file/thumbnail/h/${hash}/s/${size}`
