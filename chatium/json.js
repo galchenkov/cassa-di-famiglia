@@ -12,6 +12,7 @@ module.exports = {
     screen: (title, blocks = [], data = {}) => ({
         title,
         blocks: blocks.filter(Boolean),
+        header: { compact: true },
         ...data,
     }),
 
