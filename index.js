@@ -176,7 +176,7 @@ app.get('/order', (req, res) => {
             return result + product.price * orders[authId][id]
         }, 0)
 
-        res.json(
+        return res.json(
             response(
                 screen('Заказ', [
                     ...productIds.map(id => {
