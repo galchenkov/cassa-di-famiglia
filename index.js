@@ -276,4 +276,4 @@ if (process.env.NODE_ENV === 'development') {
     listen(vendor, 5000)
 }
 
-listen(app, 5050)
+listen(app, process.env.PORT || 5050)
