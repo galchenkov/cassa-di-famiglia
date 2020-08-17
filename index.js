@@ -1,14 +1,23 @@
 const express = require('express')
 const cors = require('cors')
+const bodyParser = require('body-parser')
 
-const { response, screen, text, button, image, listItem, imageIcon } = require('./chatium/json')
-const { navigate, copyToClipboard } = require('./chatium/actions')
+const { response, appAction, screen, text, button, image, listItem, imageIcon } = require('./chatium/json')
+const { navigate, apiCall, copyToClipboard, refresh } = require('./chatium/actions')
 
 const categories = require('./data/categories')
 const products = require('./data/products')
+const orders = {
+    // Структура:
+    // authId: {
+    //   productId: count
+    // }
+}
 
 const app = express()
 app.use(cors())
+app.use(bodyParser.urlencoded({ extended: false }))
+app.use(bodyParser.json())
 
 app.get('/', (req, res) => {
     res.json(
@@ -40,9 +49,9 @@ app.get('/contacts', (req, res) => {
 })
 
 app.get('/chatium', (req, res) => {
-    const accountId = req.header('x-chatium-account-id') ? req.header('x-chatium-account-id') : '–'
-    const authId = req.header('x-chatium-auth-id') ? req.header('x-chatium-auth-id') : '–'
-    const userId = req.header('x-chatium-user-id') ? req.header('x-chatium-user-id') : '–'
+    const accountId = req.header('x-chatium-account-id') || '–'
+    const authId = req.header('x-chatium-auth-id') || '–'
+    const userId = req.header('x-chatium-user-id') || '–'
 
     res.json(
         response(
@@ -111,8 +120,16 @@ app.get('/menu/:category', (req, res) => {
 })
 
 app.get('/menu/:category/:product', (req, res) => {
+    const authId = req.header('x-chatium-auth-id') || null
+
     const category = categories.find(category => category.id === req.params.category)
     const product = products.find(product => product.id === req.params.product)
+
+    const count = orders[authId]
+        ? orders[authId][product.id]
+            ? orders[authId][product.id]
+            : 0
+        : 0
 
     res.json(
         response(
@@ -127,8 +144,53 @@ app.get('/menu/:category/:product', (req, res) => {
                     fontSize: 'xxxlarge',
                     isBold: true,
                 }),
+                authId && button(
+                    count === 0
+                        ? 'Добавить в заказ'
+                        : `В заказе ${count} шт`
+                    , apiCall(`/order/add`, {
+                        product: product.id,
+                    })
+                ),
+                count > 0 && button('Убать из заказа', apiCall(`/order/remove`, {
+                    product: product.id,
+                })),
                 button(category.name, navigate(`/menu/${category.id}`))
             ])
+        )
+    )
+})
+
+app.post('/order/add', (req, res) => {
+    const authId = req.header('x-chatium-auth-id') || null
+
+    if (!orders[authId]) {
+        orders[authId] = {}
+    }
+
+    if (!orders[authId][req.body.product]) {
+        orders[authId][req.body.product] = 0
+    }
+
+    orders[authId][req.body.product]++
+
+    res.json(
+        appAction(
+            refresh()
+        )
+    )
+})
+
+app.post('/order/remove', (req, res) => {
+    const authId = req.header('x-chatium-auth-id') || null
+
+    if (orders[authId] && orders[authId][req.body.product]) {
+        orders[authId][req.body.product]--
+    }
+
+    res.json(
+        appAction(
+            refresh()
         )
     )
 })

@@ -4,9 +4,14 @@ module.exports = {
         data,
     }),
 
+    appAction: (appAction) => ({
+        success: true,
+        appAction,
+    }),
+
     screen: (title, blocks = [], data = {}) => ({
         title,
-        blocks,
+        blocks: blocks.filter(Boolean),
         ...data,
     }),
 

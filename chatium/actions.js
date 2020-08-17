@@ -1,12 +1,19 @@
 module.exports = {
-    showToast: (toast) => ({
-        type: 'showToast',
-        toast,
-    }),
-
     navigate: (url) => ({
         type: 'navigate',
         url,
+    }),
+
+    apiCall: (url, apiParams = {}, confirm = false) => ({
+        type: 'apiCall',
+        url,
+        apiParams,
+        confirm,
+    }),
+
+    showToast: (toast) => ({
+        type: 'showToast',
+        toast,
     }),
 
     copyToClipboard: (text) => ({
