@@ -5,8 +5,8 @@ const bodyParser = require('body-parser')
 const { response, appAction, screen, text, button, image, listItem, imageIcon } = require('./chatium/json')
 const { navigate, apiCall, showToast, copyToClipboard, refresh } = require('./chatium/actions')
 
-const categories = require('./data/categories')
-const products = require('./data/products')
+const categories = require('./data/tanununuki/categories')
+const products = require('./data/tanununuki/products')
 const orders = {
     // Структура:
     // authId: {
@@ -275,5 +275,5 @@ if (process.env.NODE_ENV === 'development') {
 
     listen(vendor, 5000)
 }
-
+//30123
 listen(app, process.env.PORT || 5050)
