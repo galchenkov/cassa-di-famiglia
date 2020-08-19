@@ -1,6 +1,7 @@
 const express = require('express')
 const cors = require('cors')
 const bodyParser = require('body-parser')
+const jwt = require('jsonwebtoken')
 
 const { response, appAction, screen, text, button, image, listItem, imageIcon } = require('./chatium/json')
 const { navigate, apiCall, showToast, copyToClipboard, refresh } = require('./chatium/actions')
@@ -50,23 +51,37 @@ app.get('/contacts', (req, res) => {
 })
 
 app.get('/chatium', (req, res) => {
-    const accountId = req.header('x-chatium-account-id') || '–'
-    const authId = req.header('x-chatium-auth-id') || '–'
-    const userId = req.header('x-chatium-user-id') || '–'
+    console.log(req.header('x-chatium-application'))
+    try {
+        const payload = jwt.verify(req.header('x-chatium-application'), process.env.API_SECRET)
 
-    res.json(
-        response(
-            screen('Данные из чатиума', [
-                text('Account'),
-                button(accountId, copyToClipboard(accountId), {buttonType: 'flat'}),
-                text('Auth'),
-                button(authId, copyToClipboard(authId), {buttonType: 'flat'}),
-                text('User'),
-                button(userId, copyToClipboard(userId), {buttonType: 'flat'}),
-                button('Главная страница', navigate('/')),
-            ]),
-        ),
-    )
+        const accountId = payload.accountId || '–'
+        const authId =  payload.authId || '–'
+        const userId =  payload.userId || '–'
+
+        return res.json(
+            response(
+                screen('Данные из чатиума', [
+                    text('Account'),
+                    button(accountId, copyToClipboard(accountId), {buttonType: 'flat'}),
+                    text('Auth'),
+                    button(authId, copyToClipboard(authId), {buttonType: 'flat'}),
+                    text('User'),
+                    button(userId, copyToClipboard(userId), {buttonType: 'flat'}),
+                    button('Главная страница', navigate('/')),
+                ]),
+            ),
+        )
+    } catch (e) {
+        return res.json(
+            response(
+                screen('Данные из чатиума', [
+                    text('Ошибка сигнатуры'),
+                    button('Главная страница', navigate('/')),
+                ]),
+            ),
+        )
+    }
 })
 
 app.get('/menu', (req, res) => {
@@ -121,7 +136,7 @@ app.get('/menu/:category', (req, res) => {
 })
 
 app.get('/menu/:category/:product', (req, res) => {
-    const authId = req.header('x-chatium-auth-id') || null
+    const authId = jwt.verify(req.header('x-chatium-application'), process.env.API_SECRET).authId
 
     const category = categories.find(category => category.id === req.params.category)
     const product = products.find(product => product.id === req.params.product)
@@ -165,7 +180,7 @@ app.get('/menu/:category/:product', (req, res) => {
 })
 
 app.get('/order', (req, res) => {
-    const authId = req.header('x-chatium-auth-id') || null
+    const authId = jwt.verify(req.header('x-chatium-application'), process.env.API_SECRET).authId
 
     if (orders[authId] && Object.keys(orders[authId]).length > 0) {
         const productIds = Object.keys(orders[authId])
@@ -223,7 +238,7 @@ app.get('/order', (req, res) => {
 })
 
 app.post('/order/add', (req, res) => {
-    const authId = req.header('x-chatium-auth-id') || null
+    const authId = jwt.verify(req.header('x-chatium-application'), process.env.API_SECRET).authId
 
     if (!orders[authId]) {
         orders[authId] = {}
@@ -243,7 +258,7 @@ app.post('/order/add', (req, res) => {
 })
 
 app.post('/order/remove', (req, res) => {
-    const authId = req.header('x-chatium-auth-id') || null
+    const authId = jwt.verify(req.header('x-chatium-application'), process.env.API_SECRET).authId
 
     if (orders[authId] && orders[authId][req.body.product]) {
         orders[authId][req.body.product]--
@@ -265,17 +280,22 @@ const listen = (app, port) => app.listen(port, '0.0.0.0', () => {
 })
 
 if (process.env.NODE_ENV === 'development') {
-    const vendor = express()
-    vendor.use(cors())
-    vendor.use(express.static('vendor'))
+    const fs = require('fs')
 
-    vendor.get('*', (req, res) => {
-        res.sendFile('vendor/index.html', {root: __dirname})
+    fs.readFile('vendor/index.html', 'utf8', function(err, data) {
+        const index = data.replace('~~API_SECRET~~', process.env.API_SECRET)
+
+        const vendor = express()
+        vendor.use(cors())
+
+        vendor.get('/', (req, res) => res.send(index))
+        vendor.use(express.static('vendor'))
+        vendor.get('*', (req, res) => res.send(index))
+
+        listen(vendor, 5000)
     })
-
-    listen(vendor, 5000)
 }
-//30123
+
 listen(app, process.env.PORT || 5050)
 
 const fs = (hash, size = '100x100') => `https://fs.chatium.io/fileservice/file/thumbnail/h/${hash}/s/${size}`
