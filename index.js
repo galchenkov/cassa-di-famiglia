@@ -152,7 +152,7 @@ app.get('/menu/:category', (req, res) => {
                             blocks: [
                                 tuple[0] && productBlock(tuple[0]),
                                 tuple[1] && productBlock(tuple[1]),
-                            ],
+                            ].filter(Boolean),
                         },
                     ])),
                 button('Меню', navigate(`/menu`)),
