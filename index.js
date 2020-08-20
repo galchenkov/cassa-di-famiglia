@@ -198,7 +198,7 @@ app.get('/menu/:category/:product', (req, res) => {
             },
             blocks: [
                 button('−', apiCall(`/order/remove`, { product: product.id }), zeroMarginContainerStyle),
-                button(`В заказе ${count} шт`, navigate(`/order`), zeroMarginContainerStyle),
+                button(`${count} шт`, navigate(`/order`), zeroMarginContainerStyle),
                 button('+', apiCall(`/order/add`, { product: product.id }), zeroMarginContainerStyle),
             ],
         }
