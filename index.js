@@ -192,7 +192,7 @@ app.get('/menu/:category/:product', (req, res) => {
                 paddingLeft: 0,
                 paddingRight: 0,
                 marginTop: 0,
-                marginBottom: 0,
+                marginBottom: 20,
                 paddingTop: 0,
                 paddingBottom: 0,
             },
