@@ -125,7 +125,7 @@ app.get('/menu/:category', (req, res) => {
             flexShrink: 0,
         },
         blocks: [
-            image(fs(product.image, '200x200')),
+            image(fs(product.image, '150x150')),
             text(product.name, { isBold: true }),
             text(product.description, { fontSize: 'small' }),
             text(product.price + '₽', { fontSize: 'xxlarge' }),
