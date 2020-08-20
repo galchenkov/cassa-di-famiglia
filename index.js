@@ -8,6 +8,8 @@ const { navigate, apiCall, showToast, copyToClipboard, refresh } = require('./ch
 
 const categories = require('./data/tanununuki/categories')
 const products = require('./data/tanununuki/products')
+const { sign } = require("jsonwebtoken")
+
 const orders = {
     // Структура:
     // authId: {
@@ -51,13 +53,21 @@ app.get('/contacts', (req, res) => {
 })
 
 app.get('/chatium', (req, res) => {
-    console.log(req.header('x-chatium-application'))
     try {
         const payload = jwt.verify(req.header('x-chatium-application'), process.env.API_SECRET)
 
         const accountId = payload.accountId || '–'
         const authId =  payload.authId || '–'
         const userId =  payload.userId || '–'
+        const authToken =  payload.authToken || '–'
+
+        const method = 'get'
+        const url = '/api/v1/heap/hellomoto'
+
+        console.log(sign(
+            { authToken },
+            process.env.API_SECRET + method + url
+        ))
 
         return res.json(
             response(
@@ -108,28 +118,44 @@ app.get('/menu', (req, res) => {
 app.get('/menu/:category', (req, res) => {
     const category = categories.find(category => category.id === req.params.category)
 
+    const productBlock = (product) => ({
+        type: 'text',
+        containerStyle: {
+            flexBasis: '50%',
+            flexShrink: 0,
+        },
+        blocks: [
+            image(fs(product.image, '200x200')),
+            text(product.name, { isBold: true }),
+            text(product.description, { fontSize: 'small' }),
+            text(product.price + '₽', { fontSize: 'xxlarge' }),
+        ],
+        onClick: navigate(`/menu/${category.id}/${product.id}`),
+    })
+
     res.json(
         response(
             screen(category.name, [
                 ...products
                     .filter(product => product.category === category.id)
-                    .flatMap(product => ([
-                        listItem(
-                            product.name,
-                            product.description,
-                            imageIcon(fs(product.image, '200x200')),
-                            {
-                                onClick: navigate(`/menu/${category.id}/${product.id}`),
-                                status: {
-                                    text: product.price + '₽',
-                                    bgColor: 'blue',
-                                    color: 'white',
-                                    isAvailable: true,
-                                },
-                            }
-                        ),
+                    .reduce(function (result, array, index) {
+                        index % 2 ? result[result.length - 1].push(array) : result.push([array])
+
+                        return result
+                    }, [])
+                    .flatMap(tuple => ([
+                        {
+                            type: 'text',
+                            containerStyle: {
+                                flexDirection: 'row',
+                            },
+                            blocks: [
+                                tuple[0] && productBlock(tuple[0]),
+                                tuple[1] && productBlock(tuple[1]),
+                            ],
+                        },
                     ])),
-                button('Меню', navigate(`/menu`))
+                button('Меню', navigate(`/menu`)),
             ])
         )
     )
@@ -146,7 +172,27 @@ app.get('/menu/:category/:product', (req, res) => {
             ? orders[authId][product.id]
             : 0
         : 0
-    const order = orders[authId] && Object.keys(orders[authId]).length > 0
+
+    const zeroMarginContainerStyle = { containerStyle: { marginTop: 0, marginBottom: 0 } }
+    const orderButton = count === 0
+        ? button('Добавить в заказ', apiCall(`/order/add`, { product: product.id }))
+        : {
+            type: 'text',
+            containerStyle: {
+                flexDirection: 'row',
+                paddingLeft: 0,
+                paddingRight: 0,
+                marginTop: 0,
+                marginBottom: 0,
+                paddingTop: 0,
+                paddingBottom: 0,
+            },
+            blocks: [
+                button('−', apiCall(`/order/remove`, { product: product.id }), zeroMarginContainerStyle),
+                button(`В заказе ${count} шт`, navigate(`/order`), zeroMarginContainerStyle),
+                button('+', apiCall(`/order/add`, { product: product.id }), zeroMarginContainerStyle),
+            ],
+        }
 
     res.json(
         response(
@@ -161,19 +207,8 @@ app.get('/menu/:category/:product', (req, res) => {
                     fontSize: 'xxxlarge',
                     isBold: true,
                 }),
-                authId && button(
-                    count === 0
-                        ? 'Добавить в заказ'
-                        : `В заказе ${count} шт`
-                    , apiCall(`/order/add`, {
-                        product: product.id,
-                    })
-                ),
-                count > 0 && button('Убать из заказа', apiCall(`/order/remove`, {
-                    product: product.id,
-                })),
-                order && button('Мой заказ', navigate(`/order`)),
-                button(category.name, navigate(`/menu/${category.id}`))
+                authId && orderButton,
+                button(`Назад в ${category.name}`, navigate(`/menu/${category.id}`))
             ])
         )
     )
