@@ -118,17 +118,26 @@ app.get('/menu', (req, res) => {
 app.get('/menu/:category', (req, res) => {
     const category = categories.find(category => category.id === req.params.category)
 
+    const zeroPaddingContainerStyle = {
+        containerStyle: {
+            paddingLeft: 0,
+            paddingRight: 0,
+        }
+    }
+
     const productBlock = (product) => ({
         type: 'text',
         containerStyle: {
             flexBasis: '50%',
             flexShrink: 0,
+            paddingLeft: 0,
+            paddingRight: 0,
         },
         blocks: [
-            image(fs(product.image, '150x150')),
-            text(product.name, { isBold: true }),
-            text(product.description, { fontSize: 'small' }),
-            text(product.price + '₽', { fontSize: 'xxlarge' }),
+            image(fs(product.image, '150x150'), zeroPaddingContainerStyle),
+            text(product.name, { fontSize: 'medium', isBold: true, containerStyle: { zeroPaddingContainerStyle, marginTop: 0, marginBottom: 5 } }),
+            text(product.description, { fontSize: 'medium', color: '#777777', containerStyle: { zeroPaddingContainerStyle, marginTop: 0, marginBottom: 10 } }),
+            text(product.price + '₽', { fontSize: 'xxlarge', containerStyle: { zeroPaddingContainerStyle, marginTop: 0, marginBottom: 0 } }),
         ],
         onClick: navigate(`/menu/${category.id}/${product.id}`),
     })
