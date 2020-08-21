@@ -10,12 +10,8 @@ const categories = require('./data/tanununuki/categories')
 const products = require('./data/tanununuki/products')
 const { sign } = require("jsonwebtoken")
 
-const orders = {
-    // Структура:
-    // authId: {
-    //   productId: count
-    // }
-}
+const { orderRepo, getOrderByAuthId, getOrCreateOrderByAuthId } = require('./heap/orderRepo')
+
 
 const app = express()
 app.use(cors())
@@ -170,15 +166,18 @@ app.get('/menu/:category', (req, res) => {
     )
 })
 
-app.get('/menu/:category/:product', (req, res) => {
-    const authId = jwt.verify(req.header('x-chatium-application'), process.env.API_SECRET).authId
+app.get('/menu/:category/:product', async (req, res) => {
+    const ctx = getContext(req)
+    const authId = ctx.auth.id
 
     const category = categories.find(category => category.id === req.params.category)
     const product = products.find(product => product.id === req.params.product)
 
-    const count = orders[authId]
-        ? orders[authId][product.id]
-            ? orders[authId][product.id]
+    const order = await getOrderByAuthId(ctx, authId)
+
+    const count = order
+        ? order.products[product.id]
+            ? order.products[product.id]
             : 0
         : 0
 
@@ -219,16 +218,20 @@ app.get('/menu/:category/:product', (req, res) => {
     )
 })
 
-app.get('/order', (req, res) => {
-    const authId = jwt.verify(req.header('x-chatium-application'), process.env.API_SECRET).authId
+app.get('/order', async (req, res) => {
+    const ctx = getContext(req)
+    const authId = ctx.auth.id
 
-    if (orders[authId] && Object.keys(orders[authId]).length > 0) {
-        const productIds = Object.keys(orders[authId])
+    const order = await getOrderByAuthId(ctx, authId)
+
+
+    if (order && Object.keys(order.products).length > 0) {
+        const productIds = Object.keys(order.products)
 
         const total = productIds.reduce((result, id) => {
             const product = products.find(product => product.id === id)
 
-            return result + product.price * orders[authId][id]
+            return result + product.price * order.products[id]
         }, 0)
 
         return res.json(
@@ -239,7 +242,7 @@ app.get('/order', (req, res) => {
                         const category = categories.find(category => category.id === product.category)
 
                         return listItem(
-                            orders[authId][id] + ' x ' + product.name,
+                            order.products[id] + ' x ' + product.name,
                             product.description,
                             imageIcon(fs(product.image, '200x200')),
                             {
@@ -277,18 +280,19 @@ app.get('/order', (req, res) => {
     )
 })
 
-app.post('/order/add', (req, res) => {
-    const authId = jwt.verify(req.header('x-chatium-application'), process.env.API_SECRET).authId
+app.post('/order/add', async (req, res) => {
+    const ctx = getContext(req)
+    const authId = ctx.auth.id
 
-    if (!orders[authId]) {
-        orders[authId] = {}
-    }
+    const order = await getOrCreateOrderByAuthId(ctx, authId)
 
-    if (!orders[authId][req.body.product]) {
-        orders[authId][req.body.product] = 0
-    }
-
-    orders[authId][req.body.product]++
+    await orderRepo.update(ctx, {
+      id: order.id,
+      products: {
+        ...order.products,
+        [req.body.product]: order.products[req.body.product] ? order.products[req.body.product] + 1 : 1,
+      }
+    })
 
     res.json(
         appAction(
@@ -297,15 +301,25 @@ app.post('/order/add', (req, res) => {
     )
 })
 
-app.post('/order/remove', (req, res) => {
-    const authId = jwt.verify(req.header('x-chatium-application'), process.env.API_SECRET).authId
+app.post('/order/remove', async (req, res) => {
+    const ctx = getContext(req)
+    const authId = ctx.auth.id
 
-    if (orders[authId] && orders[authId][req.body.product]) {
-        orders[authId][req.body.product]--
+    const order = await getOrCreateOrderByAuthId(ctx, authId)
 
-        if (orders[authId][req.body.product] === 0) {
-            delete orders[authId][req.body.product]
-        }
+    const productId = req.body.product
+    const products = order.products
+    if (products[productId] != null) {
+      if (products[productId] > 1) {
+        products[productId]--
+      } else {
+        delete products[productId]
+      }
+
+      await orderRepo.update(ctx, {
+        id: order.id,
+        products,
+      })
     }
 
     res.json(
@@ -339,3 +353,24 @@ if (process.env.NODE_ENV === 'development') {
 listen(app, process.env.PORT || 5050)
 
 const fs = (hash, size = '100x100') => `https://fs.chatium.io/fileservice/file/thumbnail/h/${hash}/s/${size}`
+
+function getContext(req) {
+  const token = jwt.verify(req.header('x-chatium-application'), process.env.API_SECRET)
+
+  return {
+    auth: {
+      id: token.authId,
+      type: 'Phone',
+      key: '',
+      requestToken: token.authToken,
+    },
+    account: {
+      id: token.accountId,
+      host: token.accountHost,
+    },
+    app: {
+      apiKey: process.env.API_KEY,
+      apiSecret: process.env.API_SECRET,
+    }
+  }
+}
