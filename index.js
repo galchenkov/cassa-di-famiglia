@@ -191,10 +191,6 @@ app.get('/menu/:category/:product', (req, res) => {
                 flexDirection: 'row',
                 paddingLeft: 0,
                 paddingRight: 0,
-                marginTop: 0,
-                marginBottom: 20,
-                paddingTop: 0,
-                paddingBottom: 0,
             },
             blocks: [
                 button('−', apiCall(`/order/remove`, { product: product.id }), zeroMarginContainerStyle),
