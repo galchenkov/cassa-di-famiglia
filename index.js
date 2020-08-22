@@ -322,7 +322,7 @@ app.post('/order/remove', async (req, res) => {
 app.post('/order', async (req, res) => {
     const ctx = getContext(req)
     const order = await getOrCreateOrderByAuthId(ctx, ctx.auth.id)
-    const response = await chatiumPost(ctx, `${ctx.account.host}/api/v1/feed/personal/${order.id}`)
+    const response = await chatiumPost(ctx, `/api/v1/feed/personal/${order.id}`)
 
     console.log(response)
 
