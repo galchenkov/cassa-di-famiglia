@@ -4,14 +4,14 @@ const bodyParser = require('body-parser')
 const jwt = require('jsonwebtoken')
 
 const { response, appAction, screen, text, button, image, listItem, imageIcon } = require('./chatium/json')
-const { navigate, apiCall, showToast, copyToClipboard, refresh } = require('./chatium/actions')
+const { navigate, apiCall, copyToClipboard, refresh } = require('./chatium/actions')
 
 const categories = require('./data/tanununuki/categories')
 const products = require('./data/tanununuki/products')
+const axios = require("axios");
 const { sign } = require("jsonwebtoken")
 
 const { orderRepo, getOrderByAuthId, getOrCreateOrderByAuthId } = require('./heap/orderRepo')
-
 
 const app = express()
 app.use(cors())
@@ -57,8 +57,8 @@ app.get('/chatium', (req, res) => {
         const userId =  payload.userId || '–'
         const authToken =  payload.authToken || '–'
 
-        const method = 'get'
-        const url = '/api/v1/heap/hellomoto'
+        const method = 'post'
+        const url = '/api/v1/payment/rDbVDI4eigNtFOqCCME0chati'
 
         console.log(sign(
             { authToken },
@@ -259,7 +259,7 @@ app.get('/order', async (req, res) => {
                     text(`Итого: ${total} руб.`, {
                         fontSize: 'xxxlarge',
                     }),
-                    button('Оплатить заказ', showToast('Я пока не умею =('))
+                    button('Оплатить заказ', apiCall('/order'))
                 ])
             )
         )
@@ -327,6 +327,57 @@ app.post('/order/remove', async (req, res) => {
             refresh()
         )
     )
+})
+
+app.post('/order', async (req, res) => {
+    const ctx = getContext(req)
+    const order = await getOrCreateOrderByAuthId(ctx, ctx.auth.id)
+
+    // const method = 'post'
+    // const url = '/api/v1/payment/rDbVDI4eigNtFOqCCME0chati'
+    //
+    // const authorization = sign(
+    //     { authToken },
+    //     process.env.API_SECRET + method + url
+    // )
+    //
+    // const response = await axios.post(`https://${accountHost}${url}`, {
+    //     amount: 10,
+    //     description: 'Оплата заказа в ресторане',
+    // }, {
+    //     headers: {
+    //         authorization,
+    //         'x-chatium-api-key': process.env.API_KEY,
+    //     }
+    // })
+
+    const method = 'post'
+    const url = `${ctx.account.host}/api/v1/feed/personal/${order.id}`
+
+    const authorization = sign(
+        { authToken: ctx.auth.requestToken },
+        ctx.app.apiSecret + method + url
+    )
+
+    const response = await axios.post(`https://${url}`, {}, {
+        headers: {
+            authorization,
+            'x-chatium-api-key': ctx.app.apiKey,
+        }
+    })
+
+    console.log(response)
+
+    return res.json(
+        appAction(
+            // response.data.action
+            refresh()
+        )
+    )
+})
+
+app.post('/hook/payment', (req, res) => {
+
 })
 
 const listen = (app, port) => app.listen(port, '0.0.0.0', () => {
