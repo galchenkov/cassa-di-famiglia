@@ -8,9 +8,8 @@ const { navigate, apiCall, copyToClipboard, refresh } = require('./chatium/actio
 
 const categories = require('./data/tanununuki/categories')
 const products = require('./data/tanununuki/products')
-const axios = require("axios");
-const { sign } = require("jsonwebtoken")
 
+const { chatiumPost } = require('@chatium/sdk')
 const { orderRepo, getOrderByAuthId, getOrCreateOrderByAuthId } = require('./heap/orderRepo')
 
 const app = express()
@@ -55,15 +54,6 @@ app.get('/chatium', (req, res) => {
         const accountId = payload.accountId || '–'
         const authId =  payload.authId || '–'
         const userId =  payload.userId || '–'
-        const authToken =  payload.authToken || '–'
-
-        const method = 'post'
-        const url = '/api/v1/payment/rDbVDI4eigNtFOqCCME0chati'
-
-        console.log(sign(
-            { authToken },
-            process.env.API_SECRET + method + url
-        ))
 
         return res.json(
             response(
@@ -332,45 +322,12 @@ app.post('/order/remove', async (req, res) => {
 app.post('/order', async (req, res) => {
     const ctx = getContext(req)
     const order = await getOrCreateOrderByAuthId(ctx, ctx.auth.id)
-
-    // const method = 'post'
-    // const url = '/api/v1/payment/rDbVDI4eigNtFOqCCME0chati'
-    //
-    // const authorization = sign(
-    //     { authToken },
-    //     process.env.API_SECRET + method + url
-    // )
-    //
-    // const response = await axios.post(`https://${accountHost}${url}`, {
-    //     amount: 10,
-    //     description: 'Оплата заказа в ресторане',
-    // }, {
-    //     headers: {
-    //         authorization,
-    //         'x-chatium-api-key': process.env.API_KEY,
-    //     }
-    // })
-
-    const method = 'post'
-    const url = `${ctx.account.host}/api/v1/feed/personal/${order.id}`
-
-    const authorization = sign(
-        { authToken: ctx.auth.requestToken },
-        ctx.app.apiSecret + method + url
-    )
-
-    const response = await axios.post(`https://${url}`, {}, {
-        headers: {
-            authorization,
-            'x-chatium-api-key': ctx.app.apiKey,
-        }
-    })
+    const response = await chatiumPost(ctx, `${ctx.account.host}/api/v1/feed/personal/${order.id}`)
 
     console.log(response)
 
     return res.json(
         appAction(
-            // response.data.action
             refresh()
         )
     )
