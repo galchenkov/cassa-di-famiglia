@@ -323,7 +323,11 @@ app.post('/order', async (req, res) => {
     const ctx = getContext(req)
     const order = await getOrCreateOrderByAuthId(ctx, ctx.auth.id)
 
-    const feedResponse = await chatiumPost(ctx, `/api/v1/feed/personal/${order.id}`)
+    const feedResponse = await chatiumPost(ctx, `/api/v1/feed/personal/${order.id}`, {
+        title: 'Costa Coffee',
+        icon: imageIcon(fs('image_Q3xnPWCppc.1000x1000.png', '100x100')),
+    })
+
     await chatiumPost(ctx, `/api/v1/feed/${feedResponse.feed_uid}/message`, {
         text:`Привет всем из заказа ${order.id}!`
     })
