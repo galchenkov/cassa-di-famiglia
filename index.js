@@ -10,7 +10,7 @@ const categories = require('./data/tanununuki/categories')
 const products = require('./data/tanununuki/products')
 
 const { chatiumPost } = require('@chatium/sdk')
-const { orderRepo, getOrderByAuthId, getOrCreateOrderByAuthId } = require('./heap/orderRepo')
+const { orderRepo, getOrderByAuthId, getOrCreateOrderByAuthId, startProcessingOrder } = require('./heap/orderRepo')
 
 const app = express()
 app.use(cors())
@@ -214,7 +214,6 @@ app.get('/order', async (req, res) => {
 
     const order = await getOrderByAuthId(ctx, authId)
 
-
     if (order && Object.keys(order.products).length > 0) {
         const productIds = Object.keys(order.products)
 
@@ -329,8 +328,11 @@ app.post('/order', async (req, res) => {
     })
 
     await chatiumPost(ctx, `/api/v1/feed/${feedResponse.feed_uid}/message`, {
-        text:`Привет всем из заказа ${order.id}!`
+        text:`Поступил новый заказ #${order.number}`,
+        blocks: messageOrderBlocks(ctx, order),
     })
+
+    await startProcessingOrder(ctx, order)
 
     return res.json(
         appAction(
@@ -387,4 +389,43 @@ function getContext(req) {
       apiSecret: process.env.API_SECRET,
     }
   }
+}
+
+function messageOrderBlocks(ctx, order) {
+    const productIds = Object.keys(order.products)
+
+    const total = productIds.reduce((result, id) => {
+        const product = products.find(product => product.id === id)
+
+        return result + product.price * order.products[id]
+    }, 0)
+
+    return [
+        ...productIds.map(id => {
+            const product = products.find(product => product.id === id)
+            const category = categories.find(category => category.id === product.category)
+
+            return listItem(
+                order.products[id] + ' x ' + product.name,
+                product.description,
+                imageIcon(fs(product.image, '200x200')),
+                {
+                    onClick: navigate(`/menu/${category.id}/${product.id}`),
+                    status: {
+                        text: product.price + '₽',
+                        bgColor: 'blue',
+                        color: 'white',
+                        isAvailable: true,
+                    },
+                }
+            )
+        }),
+        text(`Итого: ${total} руб.`, {
+            fontSize: 'large',
+            containerStyle: {
+                borderTopWidth: 1,
+                borderTopColor: 'black',
+            }
+        }),
+    ]
 }
