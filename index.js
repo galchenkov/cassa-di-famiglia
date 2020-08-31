@@ -4,7 +4,7 @@ const bodyParser = require('body-parser')
 const jwt = require('jsonwebtoken')
 
 const { response, appAction, screen, text, button, image, listItem, imageIcon } = require('./chatium/json')
-const { navigate, apiCall, copyToClipboard, refresh } = require('./chatium/actions')
+const { navigate, apiCall, copyToClipboard, refresh } = require('@chatium/json')
 
 const categories = require('./data/tanununuki/categories')
 const products = require('./data/tanununuki/products')
