@@ -4,7 +4,7 @@ const bodyParser = require('body-parser')
 const jwt = require('jsonwebtoken')
 
 const { response, appAction, screen, text, button, image, listItem, imageIcon } = require('./chatium/json')
-const { screenResponse, flattenChildren, navigate, apiCall, copyToClipboard, refresh, Screen, Text, Button, Image, ListItem } = require('@chatium/json')
+const { screenResponse, navigate, apiCall, copyToClipboard, refresh, Screen, Text, Button, Image, ListItem } = require('@chatium/json')
 
 const categories = require('./data/tanununuki/categories')
 const products = require('./data/tanununuki/products')
@@ -93,7 +93,7 @@ app.get('/menu/:category', async (req, res) => {
         containerStyle: {
             flexDirection: 'row',
         },
-    }, await flattenChildren(tuple.map(ProductCardBlock)))
+    }, tuple.map(ProductCardBlock))
 
     const ProductCardBlock = async product => Text({
         containerStyle: {
@@ -103,7 +103,7 @@ app.get('/menu/:category', async (req, res) => {
             paddingRight: 0,
         },
         onClick: navigate(`/menu/${category.id}/${product.id}`),
-    }, await flattenChildren([
+    }, [
         Image({
             downloadUrl: fs(product.image, '150x150'),
             containerStyle: {
@@ -138,13 +138,13 @@ app.get('/menu/:category', async (req, res) => {
                 marginBottom: 0,
             },
         }),
-    ]))
+    ])
 
     res.json(
-        screenResponse({ data: await Screen({ title: category.name }, await flattenChildren([
+        screenResponse({ data: await Screen({ title: category.name }, [
             ...products.filter(byCategory).reduce(toTuples, []).map(ProductRowBlock),
             Button({ title: 'Главная страница', onClick: navigate(`/`) }),
-        ]))})
+        ])})
     )
 })
 
@@ -181,7 +181,7 @@ app.get('/menu/:category/:product', async (req, res) => {
         }
 
     res.json(
-        response(
+        screenResponse(
             screen(product.name, [
                 image(fs(product.image, '900x900')),
                 text(product.name, {
