@@ -4,7 +4,7 @@ const bodyParser = require('body-parser')
 const jwt = require('jsonwebtoken')
 
 const { response, appAction, screen, text, button, image, listItem, imageIcon } = require('./chatium/json')
-const { screenResponse, navigate, apiCall, copyToClipboard, refresh, Screen, Text, Button, Image, ListItem } = require('@chatium/json')
+const { screenResponse, apiCallResponse, navigate, apiCall, copyToClipboard, refresh, Screen, Text, Button, Image, ListItem } = require('@chatium/json')
 
 const categories = require('./data/tanununuki/categories')
 const products = require('./data/tanununuki/products')
@@ -237,9 +237,7 @@ app.get('/order', async (req, res) => {
 
 app.post('/order/add', async (req, res) => {
     const ctx = getContext(req)
-    const authId = ctx.auth.id
-
-    const order = await getOrCreateOrderByAuthId(ctx, authId)
+    const order = await getOrCreateOrderByAuthId(ctx, ctx.auth.id)
 
     await orderRepo.update(ctx, {
       id: order.id,
@@ -250,17 +248,13 @@ app.post('/order/add', async (req, res) => {
     })
 
     res.json(
-        appAction(
-            refresh()
-        )
+        apiCallResponse({ appAction: refresh() })
     )
 })
 
 app.post('/order/remove', async (req, res) => {
     const ctx = getContext(req)
-    const authId = ctx.auth.id
-
-    const order = await getOrCreateOrderByAuthId(ctx, authId)
+    const order = await getOrCreateOrderByAuthId(ctx, ctx.auth.id)
 
     const productId = req.body.product
     const products = order.products
@@ -278,9 +272,7 @@ app.post('/order/remove', async (req, res) => {
     }
 
     res.json(
-        appAction(
-            refresh()
-        )
+        apiCallResponse({ appAction: refresh() })
     )
 })
 
@@ -296,23 +288,6 @@ app.post('/order', async (req, res) => {
         return result + product.price * order.products[id]
     }, 0)
 
-    const response = await chatiumPost(ctx, `/api/v1/payment/${order.id}`, {
-        description: `Оплата заказа #${order.number}`,
-        amount,
-        callback: 'https://' + ctx.account.host + '/hook/payment'
-    })
-
-    return res.json(
-        appAction(
-            response.action
-        )
-    )
-})
-
-app.post('/order--', async (req, res) => {
-    const ctx = getContext(req)
-    const order = await getOrCreateOrderByAuthId(ctx, ctx.auth.id)
-
     const feedResponse = await chatiumPost(ctx, `/api/v1/feed/personal/${order.id}`, {
         title: 'Costa Coffee',
         icon: imageIcon(fs('image_Q3xnPWCppc.1000x1000.png', '100x100')),
@@ -325,10 +300,15 @@ app.post('/order--', async (req, res) => {
 
     await startProcessingOrder(ctx, order)
 
+    const response = await chatiumPost(ctx, `/api/v1/payment/${order.id}`, {
+        description: `Оплата заказа #${order.number}`,
+        amount: true ? 1 : amount,
+        callback: 'https://' + ctx.account.host + '/-/restoranium/hook/payment',
+        successUrl: 'https://' + ctx.account.host + '/feed/' + feedResponse.feed_uid,
+    })
+
     return res.json(
-        appAction(
-            refresh()
-        )
+        apiCallResponse({ appAction: response.action })
     )
 })
 
