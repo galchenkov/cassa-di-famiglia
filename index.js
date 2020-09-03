@@ -4,7 +4,7 @@ const bodyParser = require('body-parser')
 const jwt = require('jsonwebtoken')
 
 const { response, appAction, screen, text, button, image, listItem, imageIcon } = require('./chatium/json')
-const { screenResponse, navigate, apiCall, copyToClipboard, refresh, Screen, Text, Button, Image } = require('@chatium/json')
+const { screenResponse, flattenChildren, navigate, apiCall, copyToClipboard, refresh, Screen, Text, Button, Image, ListItem } = require('@chatium/json')
 
 const categories = require('./data/tanununuki/categories')
 const products = require('./data/tanununuki/products')
@@ -38,112 +38,113 @@ app.get('/contacts', async (req, res) => res.json(
     ])})
 ))
 
-app.get('/chatium', (req, res) => {
+app.get('/chatium', async (req, res) => {
     try {
-        const payload = jwt.verify(req.header('x-chatium-application'), process.env.API_SECRET)
-
-        const accountId = payload.accountId || '–'
-        const authId =  payload.authId || '–'
-        const userId =  payload.userId || '–'
-
+        const ctx = getContext(req)
         return res.json(
-            response(
-                screen('Данные из чатиума', [
-                    text('Account'),
-                    button(accountId, copyToClipboard(accountId), {buttonType: 'flat'}),
-                    text('Auth'),
-                    button(authId, copyToClipboard(authId), {buttonType: 'flat'}),
-                    text('User'),
-                    button(userId, copyToClipboard(userId), {buttonType: 'flat'}),
-                    button('Главная страница', navigate('/')),
-                ]),
-            ),
+            screenResponse({ data: await Screen({ title: 'Данные из чатиума' }, [
+                Text({ text: 'Account Id' }),
+                Button({ title: ctx.account.id, onClick: copyToClipboard(ctx.account.id), buttonType: 'flat' }),
+                Text({ text: 'Account Host' }),
+                Button({ title: ctx.account.host, onClick: copyToClipboard(ctx.account.host), buttonType: 'flat' }),
+                Text({ text: 'Auth' }),
+                Button({ title: ctx.auth.id, onClick: copyToClipboard(ctx.auth.id), buttonType: 'flat' }),
+                Button({ title: 'Главная страница', onClick: navigate('/') }),
+            ])})
         )
     } catch (e) {
         return res.json(
-            response(
-                screen('Данные из чатиума', [
-                    text('Ошибка сигнатуры'),
-                    button('Главная страница', navigate('/')),
-                ]),
-            ),
+            screenResponse({ data: await Screen({ title: 'Данные из чатиума' }, [
+                    Text({ text: 'Ошибка сигнатуры' }),
+                    Button({ title: 'Главная страница', onClick: navigate('/') }),
+                ])})
         )
     }
 })
 
-app.get('/menu', (req, res) => {
-    res.json(
-        response(
-            screen('Меню', [
-                ...categories
-                    .flatMap(category => ([
-                        listItem(
-                            category.name,
-                            category.description,
-                            imageIcon(category.image),
-                            {
-                                onClick: navigate(`/menu/${category.id}`)
-                            }
-                        ),
-                    ])),
-                button('Главная страница', navigate(`/`))
-            ])
-        )
-    )
-})
+app.get('/menu', async (req, res) => res.json(
+    screenResponse({ data: await Screen({ title: 'Меню' }, [
+        ...categories.flatMap(category => ([
+            ListItem({
+                title: category.name,
+                description: category.description,
+                logo: {
+                    shape: 'circle',
+                    image: category.image,
+                },
+                onClick: navigate(`/menu/${category.id}`),
+            })
+        ])),
+        Button({ title: 'Главная страница', onClick: navigate(`/`) }),
+    ])})
+))
 
-app.get('/menu/:category', (req, res) => {
+app.get('/menu/:category', async (req, res) => {
     const category = categories.find(category => category.id === req.params.category)
 
-    const zeroPaddingContainerStyle = {
-        containerStyle: {
-            paddingLeft: 0,
-            paddingRight: 0,
-        }
+    const byCategory = product => product.category === category.id
+    const toTuples = function (result, array, index) {
+        index % 2 ? result[result.length - 1].push(array) : result.push([array])
+
+        return result
     }
 
-    const productBlock = (product) => ({
-        type: 'text',
+    const ProductRowBlock = async tuple => Text({
+        containerStyle: {
+            flexDirection: 'row',
+        },
+    }, await flattenChildren(tuple.map(ProductCardBlock)))
+
+    const ProductCardBlock = async product => Text({
         containerStyle: {
             flexBasis: '50%',
             flexShrink: 0,
             paddingLeft: 0,
             paddingRight: 0,
         },
-        blocks: [
-            image(fs(product.image, '150x150'), zeroPaddingContainerStyle),
-            text(product.name, { fontSize: 'medium', isBold: true, containerStyle: { zeroPaddingContainerStyle, marginTop: 0, marginBottom: 5 } }),
-            text(product.description, { fontSize: 'medium', color: '#777777', containerStyle: { zeroPaddingContainerStyle, marginTop: 0, marginBottom: 10 } }),
-            text(product.price + '₽', { fontSize: 'xxlarge', containerStyle: { zeroPaddingContainerStyle, marginTop: 0, marginBottom: 0 } }),
-        ],
         onClick: navigate(`/menu/${category.id}/${product.id}`),
-    })
+    }, await flattenChildren([
+        Image({
+            downloadUrl: fs(product.image, '150x150'),
+            containerStyle: {
+                paddingLeft: 0,
+                paddingRight: 0,
+            },
+        }),
+        Text({
+            text: product.name,
+            fontSize: 'medium',
+            isBold: true,
+            containerStyle: {
+                marginTop: 0,
+                marginBottom: 5
+            },
+        }),
+        Text({
+            text: product.description,
+            fontSize: 'medium',
+            color: '#777777',
+            containerStyle: {
+                marginTop: 0,
+                marginBottom: 10,
+            },
+        }),
+        Text({
+            text: product.price + '₽',
+            fontSize: 'xxlarge',
+            color: '#777777',
+            containerStyle: {
+                marginTop: 0,
+                marginBottom: 0,
+            },
+        }),
+    ]))
 
     res.json(
-        response(
-            screen(category.name, [
-                ...products
-                    .filter(product => product.category === category.id)
-                    .reduce(function (result, array, index) {
-                        index % 2 ? result[result.length - 1].push(array) : result.push([array])
-
-                        return result
-                    }, [])
-                    .flatMap(tuple => ([
-                        {
-                            type: 'text',
-                            containerStyle: {
-                                flexDirection: 'row',
-                            },
-                            blocks: [
-                                tuple[0] && productBlock(tuple[0]),
-                                tuple[1] && productBlock(tuple[1]),
-                            ].filter(Boolean),
-                        },
-                    ])),
-                button('Меню', navigate(`/menu`)),
-            ])
-        )
+        screenResponse({ data: await Screen({ title: category.name }, await flattenChildren([
+            ...products.filter(byCategory).reduce(toTuples, []).map(ProductRowBlock),
+            Button({ title: 'Главная страница', onClick: navigate(`/`) }),
+        ]))})
     )
 })
 
