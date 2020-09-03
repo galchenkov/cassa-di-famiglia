@@ -150,12 +150,10 @@ app.get('/menu/:category', async (req, res) => {
 
 app.get('/menu/:category/:product', async (req, res) => {
     const ctx = getContext(req)
-    const authId = ctx.auth.id
+    const order = await getOrderByAuthId(ctx, ctx.auth.id)
 
     const category = categories.find(category => category.id === req.params.category)
     const product = products.find(product => product.id === req.params.product)
-
-    const order = await getOrderByAuthId(ctx, authId)
 
     const count = order
         ? order.products[product.id]
@@ -182,7 +180,7 @@ app.get('/menu/:category/:product', async (req, res) => {
             Text({ text: product.name, fontSize: 'xxlarge', isBold: true }),
             Text({ text: product.description }),
             Text({ text: product.price + ' руб.', fontSize: 'xxxlarge', isBold: true }),
-            authId && orderButton,
+            ctx.auth.id && orderButton,
             Button({ title: `Назад в ${category.name}`, onClick: navigate(`/menu/${category.id}`) })
         ])})
     )
@@ -190,9 +188,7 @@ app.get('/menu/:category/:product', async (req, res) => {
 
 app.get('/order', async (req, res) => {
     const ctx = getContext(req)
-    const authId = ctx.auth.id
-
-    const order = await getOrderByAuthId(ctx, authId)
+    const order = await getOrderByAuthId(ctx, ctx.auth.id)
 
     if (order && Object.keys(order.products).length > 0) {
         const productIds = Object.keys(order.products)
@@ -204,48 +200,38 @@ app.get('/order', async (req, res) => {
         }, 0)
 
         return res.json(
-            response(
-                screen('Заказ', [
-                    ...productIds.map(id => {
-                        const product = products.find(product => product.id === id)
-                        const category = categories.find(category => category.id === product.category)
+            screenResponse({ data: await Screen({ title: 'Заказ' }, [
+                ...productIds.map(id => {
+                    const product = products.find(product => product.id === id)
+                    const category = categories.find(category => category.id === product.category)
 
-                        return listItem(
-                            order.products[id] + ' x ' + product.name,
-                            product.description,
-                            imageIcon(fs(product.image, '200x200')),
-                            {
-                                onClick: navigate(`/menu/${category.id}/${product.id}`),
-                                status: {
-                                    text: product.price + '₽',
-                                    bgColor: 'blue',
-                                    color: 'white',
-                                    isAvailable: true,
-                                },
-                            }
-                        )
-                    }),
-                    text(`Итого: ${total} руб.`, {
-                        fontSize: 'xxxlarge',
-                    }),
-                    button('Оплатить заказ', apiCall('/order'))
-                ])
-            )
+                    return ListItem({
+                        title: order.products[id] + ' x ' + product.name,
+                        description: product.description,
+                        logo: {
+                            shape: 'square',
+                            image: fs(product.image, '200x200'),
+                        },
+                        status: {
+                            text: product.price + '₽',
+                            bgColor: 'blue',
+                            color: 'white',
+                            isAvailable: true,
+                        },
+                        onClick: navigate(`/menu/${category.id}/${product.id}`),
+                    })
+                }),
+                Text({ text: `Итого: ${total} руб.`, fontSize: 'xxxlarge' }),
+                Button({ title: 'Оплатить заказ', onClick: apiCall('/order') }),
+            ])})
         )
     }
 
     res.json(
-        response(
-            screen('Заказ', [
-                text('Ваш заказ пустой =(', {
-                    containerStyle: {
-                        marginTop: 50,
-                        marginBottom: 50,
-                    },
-                }),
-                button('Меню', navigate(`/menu`)),
-            ])
-        )
+        screenResponse({ data: await Screen({ title: 'Заказ' }, [
+            Text({ text: 'Ваш заказ пустой =(', containerStyle: { marginTop: 50, marginBottom: 50 } }),
+            Button({ title: 'Меню', onClick: navigate(`/menu`) }),
+        ])})
     )
 })
 
