@@ -165,38 +165,26 @@ app.get('/menu/:category/:product', async (req, res) => {
 
     const zeroMarginContainerStyle = { containerStyle: { marginTop: 0, marginBottom: 0 } }
     const orderButton = count === 0
-        ? button('Добавить в заказ', apiCall(`/order/add`, { product: product.id }))
-        : {
-            type: 'text',
-            containerStyle: {
-                flexDirection: 'row',
-                paddingLeft: 0,
-                paddingRight: 0,
-            },
-            blocks: [
-                button('−', apiCall(`/order/remove`, { product: product.id }), zeroMarginContainerStyle),
-                button(`${count} шт`, navigate(`/order`), zeroMarginContainerStyle),
-                button('+', apiCall(`/order/add`, { product: product.id }), zeroMarginContainerStyle),
-            ],
-        }
+        ? Button({ title: 'Добавить в заказ', onClick: apiCall(`/order/add`, { product: product.id }) })
+        : Text({ containerStyle: { flexDirection: 'row', paddingLeft: 0, paddingRight: 0, } }, [
+            Button({
+                title: '−',
+                onClick: apiCall(`/order/remove`, { product: product.id }),
+                ...zeroMarginContainerStyle
+            }),
+            Button({ title: `${count} шт`, onClick: navigate(`/order`), ...zeroMarginContainerStyle }),
+            Button({ title: '+', onClick: apiCall(`/order/add`, { product: product.id }), ...zeroMarginContainerStyle }),
+        ])
 
     res.json(
-        screenResponse(
-            screen(product.name, [
-                image(fs(product.image, '900x900')),
-                text(product.name, {
-                    fontSize: 'xxlarge',
-                    isBold: true,
-                }),
-                text(product.description),
-                text(product.price + ' руб.', {
-                    fontSize: 'xxxlarge',
-                    isBold: true,
-                }),
-                authId && orderButton,
-                button(`Назад в ${category.name}`, navigate(`/menu/${category.id}`))
-            ])
-        )
+        screenResponse({ data: await Screen({ title: product.name }, [
+            Image({ downloadUrl: fs(product.image, '900x900') }),
+            Text({ text: product.name, fontSize: 'xxlarge', isBold: true }),
+            Text({ text: product.description }),
+            Text({ text: product.price + ' руб.', fontSize: 'xxxlarge', isBold: true }),
+            authId && orderButton,
+            Button({ title: `Назад в ${category.name}`, onClick: navigate(`/menu/${category.id}`) })
+        ])})
     )
 })
 
