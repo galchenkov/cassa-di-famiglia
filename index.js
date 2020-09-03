@@ -4,7 +4,7 @@ const bodyParser = require('body-parser')
 const jwt = require('jsonwebtoken')
 
 const { response, appAction, screen, text, button, image, listItem, imageIcon } = require('./chatium/json')
-const { navigate, apiCall, copyToClipboard, refresh } = require('@chatium/json')
+const { screenResponse, navigate, apiCall, copyToClipboard, refresh, Screen, Text, Button, Image } = require('@chatium/json')
 
 const categories = require('./data/tanununuki/categories')
 const products = require('./data/tanununuki/products')
@@ -17,35 +17,26 @@ app.use(cors())
 app.use(bodyParser.urlencoded({ extended: false }))
 app.use(bodyParser.json())
 
-app.get('/', (req, res) => {
-    res.json(
-        response(
-            screen('Ресторан Cassa di Famiglia', [
-                text('Рекламная акция индуктивно порождает фирменный стиль, используя опыт предыдущих кампаний. Представляется логичным, что анализ рыночных цен многопланово отталкивает сублимированный баинг и селлинг. Лидерство в продажах, безусловно, синхронизирует презентационный материал.'),
-                image('https://fs.chatium.io/fileservice/file/download/h/image_QKwNFH2SsM.1000x715.png'),
-                text('Целевая аудитория, в рамках сегодняшних воззрений, исключительно искажает коллективный имидж. Ребрендинг отталкивает комплексный целевой трафик, учитывая результат предыдущих медиа-кампаний. Еще Траут показал, что воздействие на потребителя стабилизирует мониторинг активности, размещаясь во всех медиа. А вот по мнению аналитиков медиаплан развивает рекламный бриф. Product placement абстрактен. Поисковая реклама актаульна как никогда.'),
-                button('Меню ресторана', navigate('/menu')),
-                button('Мой заказ', navigate(`/order`)),
-                button('Контакты', navigate('/contacts')),
-                button('Данные из Чатиума', navigate('/chatium')),
-            ]),
-        ),
-    )
-})
+app.get('/', async (req, res) => res.json(
+    screenResponse({ data: await Screen({ title: 'Ресторан Cassa di Famiglia' }, [
+        Text({ text: 'Рекламная акция индуктивно порождает фирменный стиль, используя опыт предыдущих кампаний. Представляется логичным, что анализ рыночных цен многопланово отталкивает сублимированный баинг и селлинг. Лидерство в продажах, безусловно, синхронизирует презентационный материал.' }),
+        Image({ downloadUrl: 'https://fs.chatium.io/fileservice/file/download/h/image_QKwNFH2SsM.1000x715.png' }),
+        Button({ title: 'Меню ресторана', onClick: navigate('/menu') }),
+        Button({ title: 'Мой заказ', onClick: navigate('/order') }),
+        Button({ title: 'Контакты', onClick: navigate('/contacts') }),
+        Button({ title: 'Данные из Чатиума', onClick: navigate('/chatium') }),
+    ])})
+))
 
-app.get('/contacts', (req, res) => {
-    res.json(
-        response(
-            screen('Контакты', [
-                text('Семья ее жила в "старом городе" Villarosa. Я развернул карту Сицилии, отыскал адрес и обвел ее дом тонким красным фломастером. То был действительно очень старый семейный ресторан.'),
-                image('https://fs.chatium.io/fileservice/file/download/h/image_VkmpttT2ls.800x800.png'),
-                button('ул. Металлургов, 7/18', copyToClipboard('ул. Металлургов, 7/18'), {buttonType: 'flat'}),
-                button('+7 495 306-24-57', copyToClipboard('+7 495 306-24-57'), {buttonType: 'flat'}),
-                button('Главная страница', navigate('/')),
-            ]),
-        ),
-    )
-})
+app.get('/contacts', async (req, res) => res.json(
+    screenResponse({ data: await Screen({ title: 'Контакты' }, [
+        Text({ text: 'Семья ее жила в "старом городе" Villarosa. Я развернул карту Сицилии, отыскал адрес и обвел ее дом тонким красным фломастером. То был действительно очень старый семейный ресторан.' }),
+        Image({ downloadUrl: 'https://fs.chatium.io/fileservice/file/download/h/image_VkmpttT2ls.800x800.png' }),
+        Button({ title: 'ул. Металлургов, 7/18', onClick: copyToClipboard('ул. Металлургов, 7/18'), buttonType: 'flat' }),
+        Button({ title: '+7 495 306-24-57', onClick: copyToClipboard('+7 495 306-24-57'), buttonType: 'flat' }),
+        Button({ title: 'Главная страница', onClick: navigate('/') }),
+    ])})
+))
 
 app.get('/chatium', (req, res) => {
     try {
@@ -319,6 +310,31 @@ app.post('/order/remove', async (req, res) => {
 })
 
 app.post('/order', async (req, res) => {
+    const ctx = getContext(req)
+    const order = await getOrCreateOrderByAuthId(ctx, ctx.auth.id)
+
+    const productIds = Object.keys(order.products)
+
+    const amount = productIds.reduce((result, id) => {
+        const product = products.find(product => product.id === id)
+
+        return result + product.price * order.products[id]
+    }, 0)
+
+    const response = await chatiumPost(ctx, `/api/v1/payment/${order.id}`, {
+        description: `Оплата заказа #${order.number}`,
+        amount,
+        callback: 'https://' + ctx.account.host + '/hook/payment'
+    })
+
+    return res.json(
+        appAction(
+            response.action
+        )
+    )
+})
+
+app.post('/order--', async (req, res) => {
     const ctx = getContext(req)
     const order = await getOrCreateOrderByAuthId(ctx, ctx.auth.id)
 
