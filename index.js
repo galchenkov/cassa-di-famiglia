@@ -303,8 +303,8 @@ app.post('/order', async (req, res) => {
     const response = await chatiumPost(ctx, `/api/v1/payment/${order.id}`, {
         description: `Оплата заказа #${order.number}`,
         amount: true ? 1 : amount,
-        callback: 'https://' + ctx.account.host + '/-/restoranium/hook/payment',
-        successUrl: 'https://' + ctx.account.host + '/feed/' + feedResponse.feed_uid,
+        callback: `https://${ctx.account.host}/-/restoranium/hook/payment/${order.id}`,
+        successUrl: `https://${ctx.account.host}/feed/${feedResponse.feed_uid}`,
     })
 
     return res.json(
@@ -312,8 +312,19 @@ app.post('/order', async (req, res) => {
     )
 })
 
-app.post('/hook/payment', (req, res) => {
+app.post('/hook/payment/:orderId', async (req, res) => {
+    const ctx = getContext(req)
 
+    const feedResponse = await chatiumPost(ctx, `/api/v1/feed/personal/${req.params.orderId}`, {
+        title: 'Costa Coffee',
+        icon: imageIcon(fs('image_Q3xnPWCppc.1000x1000.png', '100x100')),
+    })
+
+    await chatiumPost(ctx, `/api/v1/feed/${feedResponse.feed_uid}/message`, {
+        text:`Поступила оплата по заказу`,
+    })
+
+    return res.json({ success: true })
 })
 
 const listen = (app, port) => app.listen(port, '0.0.0.0', () => {
