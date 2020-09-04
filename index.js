@@ -321,7 +321,9 @@ app.post('/order', async (req, res) => {
 })
 
 app.post('/hook/payment/:orderId', async (req, res) => {
+    console.log('/hook/payment/' + req.params.orderId)
     const ctx = getContext(req)
+    console.log('context', ctx)
 
     const feedResponse = await chatiumPost(ctx, `/api/v1/feed/personal/${req.params.orderId}`, {
         title: 'Costa Coffee',
