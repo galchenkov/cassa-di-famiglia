@@ -3,11 +3,17 @@ const cors = require('cors')
 const bodyParser = require('body-parser')
 const jwt = require('jsonwebtoken')
 
-const { response, appAction, screen, text, button, image, listItem, imageIcon } = require('./chatium/json')
-const { screenResponse, apiCallResponse, navigate, apiCall, copyToClipboard, refresh, Screen, Text, Button, Image, ListItem } = require('@chatium/json')
+require('dotenv').config()
 
-const categories = require('./data/tanununuki/categories')
-const products = require('./data/tanununuki/products')
+const {
+    flattenChildren,
+    screenResponse, apiCallResponse,
+    navigate, apiCall, copyToClipboard, refresh,
+    Screen, Text, Button, Image, ListItem
+} = require('@chatium/json')
+
+const categories = require('./data/categories')
+const products = require('./data/products')
 
 const { chatiumPost } = require('@chatium/sdk')
 const { orderRepo, getOrderByAuthId, getOrCreateOrderByAuthId, startProcessingOrder } = require('./heap/orderRepo')
@@ -164,7 +170,7 @@ app.get('/menu/:category/:product', async (req, res) => {
     const zeroMarginContainerStyle = { containerStyle: { marginTop: 0, marginBottom: 0 } }
     const orderButton = count === 0
         ? Button({ title: 'Добавить в заказ', onClick: apiCall(`/order/add`, { product: product.id }) })
-        : Text({ containerStyle: { flexDirection: 'row', paddingLeft: 0, paddingRight: 0, } }, [
+        : Text({ containerStyle: { flexDirection: 'row', paddingLeft: 0, paddingRight: 0 } }, [
             Button({
                 title: '−',
                 onClick: apiCall(`/order/remove`, { product: product.id }),
@@ -290,12 +296,15 @@ app.post('/order', async (req, res) => {
 
     const feedResponse = await chatiumPost(ctx, `/api/v1/feed/personal/${order.id}`, {
         title: 'Costa Coffee',
-        icon: imageIcon(fs('image_Q3xnPWCppc.1000x1000.png', '100x100')),
+        icon: {
+            shape: 'circle',
+            image: fs('image_Q3xnPWCppc.1000x1000.png', '100x100'),
+        },
     })
 
     await chatiumPost(ctx, `/api/v1/feed/${feedResponse.feed_uid}/message`, {
         text:`Поступил новый заказ #${order.number}`,
-        blocks: messageOrderBlocks(ctx, order),
+        blocks: await flattenChildren(messageOrderBlocks(ctx, order)),
     })
 
     await startProcessingOrder(ctx, order)
@@ -303,7 +312,7 @@ app.post('/order', async (req, res) => {
     const response = await chatiumPost(ctx, `/api/v1/payment/${order.id}`, {
         description: `Оплата заказа #${order.number}`,
         amount: true ? 1 : amount,
-        callback: `https://${ctx.account.host}/-/restoranium/hook/payment/${order.id}`,
+        callback: `${process.env.APP_ENDPOINT}/hook/payment/${order.id}`,
         successUrl: `https://${ctx.account.host}/feed/${feedResponse.feed_uid}`,
     })
 
@@ -317,7 +326,10 @@ app.post('/hook/payment/:orderId', async (req, res) => {
 
     const feedResponse = await chatiumPost(ctx, `/api/v1/feed/personal/${req.params.orderId}`, {
         title: 'Costa Coffee',
-        icon: imageIcon(fs('image_Q3xnPWCppc.1000x1000.png', '100x100')),
+        icon: {
+            shape: 'circle',
+            image: fs('image_Q3xnPWCppc.1000x1000.png', '100x100'),
+        },
     })
 
     await chatiumPost(ctx, `/api/v1/feed/${feedResponse.feed_uid}/message`, {
@@ -373,7 +385,7 @@ function getContext(req) {
   }
 }
 
-function messageOrderBlocks(ctx, order) {
+async function messageOrderBlocks(ctx, order) {
     const productIds = Object.keys(order.products)
 
     const total = productIds.reduce((result, id) => {
@@ -387,27 +399,29 @@ function messageOrderBlocks(ctx, order) {
             const product = products.find(product => product.id === id)
             const category = categories.find(category => category.id === product.category)
 
-            return listItem(
-                order.products[id] + ' x ' + product.name,
-                product.description,
-                imageIcon(fs(product.image, '200x200')),
-                {
-                    onClick: navigate(`/menu/${category.id}/${product.id}`),
-                    status: {
-                        text: product.price + '₽',
-                        bgColor: 'blue',
-                        color: 'white',
-                        isAvailable: true,
-                    },
-                }
-            )
+            return ListItem({
+                title: order.products[id] + ' x ' + product.name,
+                description: product.description,
+                logo: {
+                    shape: 'square',
+                    image: fs(product.image, '200x200'),
+                },
+                status: {
+                    text: product.price + '₽',
+                    bgColor: 'blue',
+                    color: 'white',
+                    isAvailable: true,
+                },
+                onClick: navigate(`/menu/${category.id}/${product.id}`),
+            })
         }),
-        text(`Итого: ${total} руб.`, {
+        await Text({
+            text: `Итого: ${total} руб.`,
             fontSize: 'large',
             containerStyle: {
                 borderTopWidth: 1,
                 borderTopColor: 'black',
-            }
+            },
         }),
     ]
 }
