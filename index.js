@@ -339,7 +339,7 @@ app.post('/hook/payment/:orderId', async (req, res) => {
 })
 
 const listen = (app, port) => app.listen(port, '0.0.0.0', () => {
-    console.log(`Listening at http://localhost:${port}`)
+    console.log(`Listening at port :${port}`)
 })
 
 if (process.env.NODE_ENV === 'development') {
@@ -359,7 +359,14 @@ if (process.env.NODE_ENV === 'development') {
     })
 }
 
+console.log(``)
+console.log(`Application started:`)
 listen(app, process.env.PORT || 5050)
+console.log(``)
+console.log(`   APP_ENDPOINT = ${process.env.APP_ENDPOINT ? process.env.APP_ENDPOINT : 'undefined (setup .env file)'}`)
+console.log(`        API_KEY = ${process.env.API_KEY ? process.env.API_KEY : 'undefined (setup .env file)'}`)
+console.log(`     API_SECRET = ${process.env.API_SECRET ? process.env.API_SECRET.slice(0, 10) + 'xXxXxXxXxXxXxXxXxXxXxX' : 'undefined  (setup .env file)'}`)
+console.log(``)
 
 const fs = (hash, size = '100x100') => `https://fs.chatium.io/fileservice/file/thumbnail/h/${hash}/s/${size}`
 
