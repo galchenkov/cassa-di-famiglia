@@ -323,17 +323,19 @@ app.post('/order', async (req, res) => {
 app.post('/hook/payment/:orderId', async (req, res) => {
     const ctx = getContext(req)
 
-    const feedResponse = await chatiumPost(ctx, `/api/v1/feed/personal/${req.params.orderId}`, {
-        title: 'Costa Coffee',
-        icon: {
-            shape: 'circle',
-            image: fs('image_Q3xnPWCppc.1000x1000.png', '100x100'),
-        },
-    })
+    if (ctx.auth.id) {
+        const feedResponse = await chatiumPost(ctx, `/api/v1/feed/personal/${req.params.orderId}`, {
+            title: 'Costa Coffee',
+            icon: {
+                shape: 'circle',
+                image: fs('image_Q3xnPWCppc.1000x1000.png', '100x100'),
+            },
+        })
 
-    await chatiumPost(ctx, `/api/v1/feed/${feedResponse.feed_uid}/message`, {
-        text:`Поступила оплата по заказу`,
-    })
+        await chatiumPost(ctx, `/api/v1/feed/${feedResponse.feed_uid}/message`, {
+            text:`Поступила оплата по заказу`,
+        })
+    }
 
     return res.json({ success: true })
 })
