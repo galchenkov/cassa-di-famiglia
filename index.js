@@ -6,7 +6,6 @@ const jwt = require('jsonwebtoken')
 require('dotenv').config()
 
 const {
-    flattenChildren,
     screenResponse, apiCallResponse,
     navigate, apiCall, copyToClipboard, refresh,
     Screen, Text, Button, Image, ListItem
@@ -304,7 +303,7 @@ app.post('/order', async (req, res) => {
 
     await chatiumPost(ctx, `/api/v1/feed/${feedResponse.feed_uid}/message`, {
         text:`Поступил новый заказ #${order.number}`,
-        blocks: await flattenChildren(messageOrderBlocks(ctx, order)),
+        blocks: await messageOrderBlocks(ctx, order),
     })
 
     await startProcessingOrder(ctx, order)
