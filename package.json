@@ -5,9 +5,10 @@
   "main": "index.js",
   "scripts": {
     "start": "NODE_ENV=production node index.js",
-    "development": "NODE_ENV=development nodemon --signal SIGTERM index.js",
+    "development": "concurrently --restart-tries 3 --restart-after 10000 -p \"[{name}]\" -n \"Tunn,Node\" -i --default-input-target Node -c \"yellow.bold,green.bold\" \"npm run tunnel\" \"npm run serve:watch\"",
     "production": "NODE_ENV=production nodemon --signal SIGTERM index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "serve:watch": "NODE_ENV=development nodemon --signal SIGTERM index.js",
+    "tunnel": "sleep 5; dev-tunnel 5050"
   },
   "author": "",
   "license": "ISC",
@@ -18,9 +19,12 @@
     "cors": "2.8.5",
     "dotenv": "8.2.0",
     "express": "4.17.1",
-    "jsonwebtoken": "8.5.1"
+    "jsonwebtoken": "8.5.1",
+    "morgan": "1.10.0"
   },
   "devDependencies": {
+    "@chatium/dev-tunnel-client": "0.0.3",
+    "concurrently": "5.3.0",
     "nodemon": "2.0.4"
   }
 }

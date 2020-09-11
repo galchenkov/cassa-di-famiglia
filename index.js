@@ -2,6 +2,7 @@ const express = require('express')
 const cors = require('cors')
 const bodyParser = require('body-parser')
 const jwt = require('jsonwebtoken')
+const morgan = require('morgan')
 
 require('dotenv').config()
 
@@ -21,6 +22,7 @@ const app = express()
 app.use(cors())
 app.use(bodyParser.urlencoded({ extended: false }))
 app.use(bodyParser.json())
+app.use(morgan('combined'))
 
 app.get('/', async (req, res) => res.json(
     screenResponse({ data: await Screen({ title: 'Ресторан Cassa di Famiglia' }, [
