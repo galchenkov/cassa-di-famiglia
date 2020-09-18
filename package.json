@@ -23,7 +23,7 @@
     "morgan": "1.10.0"
   },
   "devDependencies": {
-    "@chatium/dev-tunnel-client": "0.0.4",
+    "@chatium/dev-tunnel-client": "0.0.5",
     "concurrently": "5.3.0",
     "nodemon": "2.0.4"
   }
