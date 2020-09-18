@@ -1,7 +1,6 @@
 const express = require('express')
 const cors = require('cors')
 const bodyParser = require('body-parser')
-const jwt = require('jsonwebtoken')
 const morgan = require('morgan')
 
 require('dotenv').config()
@@ -15,7 +14,7 @@ const {
 const categories = require('./data/categories')
 const products = require('./data/products')
 
-const { chatiumPost } = require('@chatium/sdk')
+const { chatiumPost, getChatiumContext, triggerHotReload } = require('@chatium/sdk')
 const { orderRepo, getOrderByAuthId, getOrCreateOrderByAuthId, startProcessingOrder } = require('./heap/orderRepo')
 
 const app = express()
@@ -365,7 +364,11 @@ if (process.env.NODE_ENV === 'development') {
 
 console.log(``)
 console.log(`Application started:`)
-listen(app, process.env.PORT || 5050)
+const port = process.env.PORT || 5050
+app.listen(port, '0.0.0.0', () => {
+    console.log(`Listening at port :${port}`)
+    triggerHotReload(appCtx).catch(err => console.log('triggerHotReload error:', err));
+})
 console.log(``)
 console.log(`   APP_ENDPOINT = ${process.env.APP_ENDPOINT ? process.env.APP_ENDPOINT : 'undefined (setup .env file)'}`)
 console.log(`        API_KEY = ${process.env.API_KEY ? process.env.API_KEY : 'undefined (setup .env file)'}`)
@@ -374,25 +377,15 @@ console.log(``)
 
 const fs = (hash, size = '100x100') => `https://fs.chatium.io/fileservice/file/thumbnail/h/${hash}/s/${size}`
 
-function getContext(req) {
-  const token = jwt.verify(req.header('x-chatium-application'), process.env.API_SECRET)
-
-  return {
-    auth: {
-      id: token.authId,
-      type: 'Phone',
-      key: '',
-      requestToken: token.authToken,
-    },
-    account: {
-      id: token.accountId,
-      host: token.accountHost,
-    },
+const appCtx = {
     app: {
-      apiKey: process.env.API_KEY,
-      apiSecret: process.env.API_SECRET,
+        apiKey: process.env.API_KEY,
+        apiSecret: process.env.API_SECRET,
     }
-  }
+}
+
+function getContext(req) {
+  return getChatiumContext(appCtx, req.headers)
 }
 
 async function messageOrderBlocks(ctx, order) {
